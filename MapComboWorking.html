@@ -397,7 +397,7 @@
             map.addLayer(featureLayer);  
           }
 
-          if (theCSJ.length > 11){
+          if (theCSJ.length > 10){
 
             if (theDistrict.length > 0){
             //Project Tracker Service
@@ -409,7 +409,7 @@
               if (theDistrict.length>0) {
                 query.where = "DIST_NM IN (" + theDistrict.toString() + ")";
                 var resultExtent = distFeatureLayer.queryExtent(query, function(results) {
-                  map.setExtent(results.extent.expand(1.5))
+                  map.setExtent(results.extent.expand(1))
                 });
               }
             }
@@ -427,7 +427,7 @@
               if (theCSJ.length>0) {
                 query.where = "CONTROL_SECT_JOB IN (" + theCSJ.toString() + ")";
                 var resultExtent = featureLayer.queryExtent(query, function(results) {
-                  map.setExtent(results.extent.expand(1.5))
+                  map.setExtent(results.extent.expand(1))
                 });
               }
             // }

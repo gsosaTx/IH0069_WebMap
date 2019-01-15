@@ -409,7 +409,7 @@
               if (theDistrict.length>0) {
                 query.where = "DIST_NM IN (" + theDistrict.toString() + ")";
                 var resultExtent = distFeatureLayer.queryExtent(query, function(results) {
-                  map.setExtent(results.extent.expand(1))
+                  map.setExtent(results.extent.expand(1.25))
                 });
               }
             }
@@ -427,7 +427,7 @@
               if (theCSJ.length>0) {
                 query.where = "CONTROL_SECT_JOB IN (" + theCSJ.toString() + ")";
                 var resultExtent = featureLayer.queryExtent(query, function(results) {
-                  map.setExtent(results.extent.expand(1))
+                  map.setExtent(results.extent.expand(1.25))
                 });
               }
             // }

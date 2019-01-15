@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Map</title>
+  <style>
+    #viewDiv {
+      position: absolute;
+      left: 0px;
+      top: 0px;
+      width: 300px;
+      height: 300px;
+      border-left: 1px solid black;
+      overflow: hidden;
+    }
+    /*#latlonDiv {*/
+    /*  position: absolute;*/
+    /*  left: 0px;*/
+    /*  top: 0px; */
+    /*  border: 0px solid #DCDCDC;*/
+    /*  background-color: white;      */
+    /*}*/
+    #legend {
+      position: absolute;
+      left: 0px;
+      top: 0px; 
+      border: 1px solid #DCDCDC;
+    }    
+    #mapOptions {
+      position: absolute;
+      right: 15px;
+      top: 15px;
+      border: 1px solid #DCDCDC;
+      color: blue;
+      cursor: pointer;
+      text-align: center;
+      border-radius: 10px;      
+    }
+    #header {
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;      
+      background-color: #6495ED;
+      padding: 5px;
+      color: white;
+      text-align: center;
+      cursor: default;
+    }    
+    #txdotMap {
+      background-color: #DCDCDC;  
+      padding: 3px;      
+    }
+    #imagery {
+      background-color: white;
+      padding: 3px;      
+    }
+    #streets {
+      background-color: white;
+      padding: 3px;      
+    }
+    #googleMaps {
+      background-color: white;      
+      padding: 3px;   
+      border-bottom-left-radius: 10px;
+      border-bottom-right-radius: 10px;       
+    }    
+    p {
+      text-align: center;
+      font-size: 30px;
+    }
+    .pleft {
+      text-align: left;
+      font-size: 23px;      
+    }
+    li {
+      color: blue;
+      cursor: pointer;
+      padding: 2px;
+      font-size: 17px;
+    }
+    table,th,td{
+      border: 1px solid white;
+      border-collapse: collapse;
+    }
+    td {
+      text-align: center;
+      padding: 4px;
+    }
+    th {
+      background-color: #6495ED;
+      color: white;
+      padding: 6px;
+    }
+    .tableFloat {
+      font-size: 11px;
+    }
+    tr:nth-child(even){background-color: #DCDCDC}
+    tr:nth-child(odd){background-color: #F8F8FF}
+
+  nav {
+	position: absolute;
+    top: 20px;
+    right: 20px;
+	text-align: center;
+	}
+	nav ul ul {
+		display: none;
+	}
+	nav ul li:hover > ul {
+			display: block;
+		}
+	nav ul {
+		background: #143c5c; 
+		/*box-shadow: 0px 0px 10px rgba(0,0,0,0.5);*/
+		padding: 0 0px;
+		border-radius: 5px;  
+		list-style: none;
+		position: relative;
+		display: inline-table;
+		margin: inherit;
+	}
+		nav ul:after {
+			content: "";
+			clear: both;
+			display: block;
+
+		}
+		nav ul li {
+			float: left;
+			font-size: .95em; 
+		}
+			nav ul li a {
+				display: block;
+				padding: 0px 5px;
+				color: #fff;
+				text-decoration: none; 
+			}
+		nav ul ul {
+			background: #5f6975;
+			border-radius: 0px 0px 5px 5px;
+			padding: 0;
+			position: absolute;
+			top: 88%;
+			left:0%;
+			right:0%;
+
+		}
+			nav ul ul li {
+				float: none;
+				border-radius: 0px 0px 5px 5px;
+				border-top: 1px solid #6b727c;
+				border-bottom: 1px solid #575f6a;
+				position: relative;
+				font-size: 0.8em;
+			}
+				nav ul ul li a {
+					padding: 0px 5px;
+					color: #fff;
+					border-radius: 5px;
+				}	
+					nav ul ul li a:hover {
+						background: #4b545f;
+						border-radius: 0px;
+					}
+  </style>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/3.25/esri/css/esri.css">
+  <script src="https://js.arcgis.com/3.25/"></script>
+
+  <script>
+    var map;
+    var TxDOTVectorTileLayer;
+    var tiled;
+    var imagery;
+    var streets;  
+    var featureLayer;
+    var theQuery;
+    var queryTask;
+    var query;
+    var districtPolygonURL = "http://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Districts/FeatureServer/0";
+    var distFeatureLayer;
+    var theDistrict = [];
+    var theCSJ = [];
+    
+    function init() {
+      adjustApp();
+      resolveURL();
+      addMap();
+    }
+    
+    function resolveURL() {
+      var docURL = document.URL;
+      var theURLlen = docURL.length;
+      var typeBegin = docURL.indexOf("?");
+      var typeEnd = docURL.indexOf("=");
+
+
+      //URL Parameters
+      var districtBegin = docURL.indexOf("DIST_NM=");
+      var csjBegin = docURL.indexOf("CONTROL_SECT_JOB=")
+      console.log(csjBegin);
+
+      if (districtBegin > 0 && csjBegin < 0) {
+        //Getting the District
+        theDistrict = docURL.substring(districtBegin+8, theURLlen).split(",");
+        for (var i = 0; i < theDistrict.length; i++) {
+          theDistrict[i] = theDistrict[i].replace("_", " ");
+        }
+      
+        for (var i = 0; i < theDistrict.length; i++) {
+          theDistrict[i] = "'" + theDistrict[i] + "'";
+        }  
+        console.log(theDistrict);
+      }
+
+      if (csjBegin > 0) {
+        //Getting comma delimited CSJ's
+        theCSJ = docURL.substring(csjBegin+17,theURLlen).split(",");
+        
+        for (var i = 0; i < theCSJ.length; i++) {
+          theCSJ[i] = theCSJ[i].replace("_", " ");
+        }
+      
+        for (var i = 0; i < theCSJ.length; i++) {
+          theCSJ[i] = "'" + theCSJ[i] + "'";
+        }      
+        
+        console.log(theCSJ);
+      }
+
+      if (districtBegin > 0 && csjBegin > 0) {
+        //Getting the District
+        theDistrict = docURL.substring(districtBegin+8, csjBegin).split(",");
+        for (var i = 0; i < theDistrict.length; i++) {
+          theDistrict[i] = theDistrict[i].replace("_", " ");
+        }
+      
+        for (var i = 0; i < theDistrict.length; i++) {
+          theDistrict[i] = "'" + theDistrict[i] + "'";
+        }  
+        console.log(theDistrict);
+
+         //Getting comma delimited CSJ's
+         theCSJ = docURL.substring(csjBegin+17,theURLlen).split(",");
+        
+        for (var i = 0; i < theCSJ.length; i++) {
+          theCSJ[i] = theCSJ[i].replace("_", " ");
+        }
+      
+        for (var i = 0; i < theCSJ.length; i++) {
+          theCSJ[i] = "'" + theCSJ[i] + "'";
+        }      
+        
+        console.log(theCSJ);
+      }
+    }
+//DISTRICT_NAME='ATLANTA' AND CONTROL_SECT_JOB IN ('157505016','006310015')
+    function addMap() {
+      require(
+        [
+        "dojo/on",
+        "dojo/dom",
+        "esri/map",
+        "esri/layers/ArcGISTiledMapServiceLayer", 
+        "esri/layers/VectorTileLayer", 
+        "esri/layers/FeatureLayer",
+        "esri/tasks/query", 
+        "esri/tasks/QueryTask",
+        "esri/layers/LabelLayer",
+        "esri/symbols/Font",
+        "esri/symbols/CartographicLineSymbol",
+        "esri/renderers/SimpleRenderer",
+        "esri/geometry/Extent",
+        "esri/SpatialReference",
+        "esri/geometry/webMercatorUtils",
+  		  "dojo/parser",
+        "dojo/domReady!"
+        ],
+      
+        function(
+          on,
+          dom,
+          Map,
+          ArcGISTiledMapServiceLayer,
+          VectorTileLayer,
+          FeatureLayer,
+          Query,QueryTask,
+          LabelLayer,
+          Font,
+          CartographicLineSymbol,
+          SimpleRenderer,
+          Extent,
+          SpatialReference,
+          webMercatorUtils,
+          parser) {
+          // map = new Map("viewDiv",{
+          //   center: [-99.5, 31.5],
+          //   zoom: 6,
+          //   minZoom:6, 
+          //   maxZoom:16          
+          // });
+
+           map = new Map("viewDiv", {
+                center: [-99.5, 31.5], 
+                zoom: 6,
+                minZoom:6, 
+                maxZoom:16,
+                logo: false
+            });
+  
+          //tiled = new ArcGISTiledMapServiceLayer("http://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/Statewide_Planning_Map/MapServer");  //old version
+          // tiled = new ArcGISTiledMapServiceLayer("http://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/SPM_Basemap_01192017/MapServer");   //new version
+          // tiled.setOpacity(0.75);
+          // map.addLayer(tiled);
+
+          //TxDOT Vector Tile Basemap
+          TxDOTVectorTileLayer = new VectorTileLayer("https://tiles.arcgis.com/tiles/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Vector_Tile_Basemap/VectorTileServer"); 
+          map.addLayer(TxDOTVectorTileLayer);
+
+        //   //Adding the IH0069 layer
+        //   var routeFeatureLayer = new FeatureLayer("https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/IH0069/FeatureServer/0"); 
+        //   map.addLayer(routeFeatureLayer);
+
+        //   //Adding the IH0069 Buffer
+        //   var bufferFeatureLayer = new FeatureLayer("https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/IH0069_New_Buffer/FeatureServer/0"); 
+        //   map.addLayer(bufferFeatureLayer);
+
+          //Condition if District is Entered
+          if (theDistrict.length > 0){
+            //Adding the layer
+            distFeatureLayer = new FeatureLayer(districtPolygonURL, {id:"TxDOT Districts",visible: true, outFields: ["*"]});
+            map.addLayer(distFeatureLayer); 
+            distFeatureLayer.setDefinitionExpression("DIST_NM IN (" + theDistrict.toString() + ")");
+          }
+          
+          imagery = new ArcGISTiledMapServiceLayer("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer");
+          map.addLayer(imagery);   
+          imagery.hide();
+          
+          streets = new ArcGISTiledMapServiceLayer("https://services.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer");
+          map.addLayer(streets);
+          streets.hide();  
+
+          var theOutFields = [
+        	'CONTROL_SECT_JOB',
+        	'DISTRICT_NAME',
+        	'COUNTY_NAME',
+        	'HIGHWAY_NUMBER',
+        	'PROJ_LENGTH',
+        	'PROJ_CLASS',    
+        	'EST_CONST_COST',
+        	'TYPE_OF_WORK',
+        	'LIMITS_FROM',
+        	'LIMITS_TO',
+        	'LAYMAN_DESCRIPTION1',
+        	'PRJ_STATUS',
+        	'PRJ_TIER',
+        	'UTP_TOTAL_SCORE',
+        	'UTP_STRATEGIC_SCORE',
+        	'NBR_LET_YEAR',
+        	'CONTROL_SECTION'
+        	];         
+        	
+        	//Info window data
+        	var tableText = "";
+        	tableText += "<table class='tableFloat' cellspacing=0 cellpadding=3>";
+          tableText += "<tr><td colspan=2 class='systemTitle'><b>Project Summary</b></td></tr>";        	
+        	tableText += "<tr><td colspan=2 class='systemTitle'>Summary information is from the TxDOT Design and Construction Information System (DCIS)</td></tr>";
+        	tableText += "<tr><th>Project ID</th><td>${CONTROL_SECT_JOB}</td></tr>";
+        	tableText += "<tr><th>Highway</th><td>${HIGHWAY_NUMBER}</td></tr>";
+          tableText += "<tr><th>From Limit</th><td>${LIMITS_FROM}</td></tr>";
+          tableText += "<tr><th>To Limit</th><td>${LIMITS_TO}</td></tr>";
+        	tableText += "<tr><th>Description</th><td>${LAYMAN_DESCRIPTION1}</td></tr>";      	
+        	tableText += "<tr><th>District</th><td>${DISTRICT_NAME}</td></tr>";	
+        	tableText += "<tr><th>Length</th><td>${PROJ_LENGTH:NumberFormat(places:3)}</td></tr>";       	
+        	tableText += "<tr><th>County</th><td>${COUNTY_NAME}</td></tr>";
+        	tableText += "<tr><th>Bid Received Date</th><td>Date</td></tr>";
+          tableText += "<tr><th>CLASS</th><td>${PROJ_CLASS}</td></tr>";
+        	tableText += "<tr><th>Est. Construction Cost</th><td>$${EST_CONST_COST:NumberFormat(places:0)}</td></tr>"; 
+          tableText += "<tr><th>Strategic Score</th><td>${UTP_STRATEGIC_SCORE:NumberFormat(places:2)}</td></tr>";
+  				tableText += "<tr><th>Total Score</th><td>${UTP_TOTAL_SCORE:NumberFormat(places:2)}</td></tr>";      	
+  				tableText += "<tr><th>Project Status</th><td>${PRJ_STATUS}</td></tr>";
+  				tableText += "<tr><th>Tier</th><td>${PRJ_TIER}</td></tr>"; 				
+        	tableText += "</table>";
+          
+          var infoTemplate = new esri.InfoTemplate("Project:",tableText);	
+          
+          //Resize the info window
+          map.infoWindow.resize(250, 250);
+          
+          if (theCSJ.length > 0){
+            //Adding the Project Tracker Service 
+            featureLayer = new FeatureLayer("https://services.arcgis.com/KTcxiTD9dsQw4r7Z/arcgis/rest/services/TxDOT_Projects/FeatureServer/0",
+            {id:"Projects",visible: true, outFields: theOutFields, infoTemplate: infoTemplate});
+            
+            featureLayer.setDefinitionExpression("CONTROL_SECT_JOB IN (" + theCSJ.toString() + ")");
+            map.addLayer(featureLayer);  
+          }
+
+          if (theCSJ.length > 8){
+
+            if (theDistrict.length > 0){
+            //Project Tracker Service
+            queryTask = new QueryTask(districtPolygonURL);
+            query = new Query();
+            query.returnGeometry = false;
+            query.outFields = ["*"];   
+            
+              if (theDistrict.length>0) {
+                query.where = "DIST_NM IN (" + theDistrict.toString() + ")";
+                var resultExtent = distFeatureLayer.queryExtent(query, function(results) {
+                  map.setExtent(results.extent.expand(1.5))
+                });
+              }
+            }
+
+          }
+          else {
+
+            // if (theDistrict.length > 0){
+            //Project Tracker Service
+            queryTask = new QueryTask(featureLayer);
+            query = new Query();
+            query.returnGeometry = false;
+            query.outFields = ["*"];   
+            
+              if (theCSJ.length>0) {
+                query.where = "CONTROL_SECT_JOB IN (" + theCSJ.toString() + ")";
+                var resultExtent = featureLayer.queryExtent(query, function(results) {
+                  map.setExtent(results.extent.expand(1.5))
+                });
+              }
+            // }
+          }
+          
+          
+                    
+          map.on("extent-change",function(evt) {
+            // alert(map.getLevel());
+          });
+          
+    		  map.on("load", function() {
+      		// 	map.on("mouse-move", showCoordinates);
+    		  });        
+        }
+      );
+    }
+
+    function showCoordinates(evt) {
+		  var mp = new esri.geometry.webMercatorToGeographic(evt.mapPoint);
+		  document.getElementById("latlonDiv").innerHTML = "Level: " + map.getZoom() + ", " + mp.x.toFixed(6) + ", " + mp.y.toFixed(6);
+		}	 
+    
+    function addImagery() {
+        TxDOTVectorTileLayer.hide();
+        streets.hide();
+        imagery.show();
+        document.getElementById("txdotMap").style.backgroundColor="white";
+        document.getElementById("streets").style.backgroundColor="white";
+        document.getElementById("imagery").style.backgroundColor="#DCDCDC";
+    }
+    
+    function addTxDOT() {
+        imagery.hide();
+        streets.hide();
+        TxDOTVectorTileLayer.show();
+        document.getElementById("txdotMap").style.backgroundColor="#DCDCDC"; 
+        document.getElementById("streets").style.backgroundColor="white";
+        document.getElementById("imagery").style.backgroundColor="white";        
+    }
+    
+    function addStreets() {
+      imagery.hide();
+      TxDOTVectorTileLayer.hide();
+      streets.show();
+      document.getElementById("txdotMap").style.backgroundColor="white"; 
+      document.getElementById("streets").style.backgroundColor="#DCDCDC";
+      document.getElementById("imagery").style.backgroundColor="white"; 
+    }    
+    
+    function openGoogleMaps() {
+      var ctr = map.extent.getCenter();
+      var lat = ctr.getLatitude();
+      var lon = ctr.getLongitude();
+      var level = map.getLevel();
+      window.open("https://www.google.com/maps/@"+lat+","+lon+","+level+"z");
+    }	    
+    
+    //Adjusts the table of contents, map, and coordinate readouts.
+    function adjustApp() {
+      var w = window.innerWidth;
+      var h = window.innerHeight;
+      var contentsWidth = 0;
+    
+      document.getElementById("viewDiv").style.left = contentsWidth + "px";
+      document.getElementById("viewDiv").style.width = (w - (contentsWidth+2)) + "px";
+      document.getElementById("viewDiv").style.height = h + "px";
+      // document.getElementById("latlonDiv").style.left = (contentsWidth+200) + "px";
+      // document.getElementById("latlonDiv").style.top = (h - 25) + "px"; 
+      document.getElementById("legend").style.left = (contentsWidth+10) + "px";
+      document.getElementById("legend").style.top = (h - 100) + "px";       
+    }
+            
+  //function to add comma separators for numeric values
+	function addCommas(nStr) {
+	  nStr += '';
+	  x = nStr.split('.');
+	  x1 = x[0];
+	  x2 = x.length > 1 ? '.' + x[1] : '';
+	  var rgx = /(\d+)(\d{3})/;
+	  while (rgx.test(x1)) {
+		x1 = x1.replace(rgx, '$1' + ',' + '$2');
+	  }
+	  return x1 + x2;
+	}  
+
+      	
+	</script>
+</head>
+<body onload="init()" onresize="adjustApp()">
+    <div id="viewDiv"></div>
+    <img id="legend" src="http://apps.dot.state.tx.us/apps-cq/project_tracker/Image/PT_Legend_3.png">    
+    <!--<div id="latlonDiv"></div>-->
+    
+    <div id="mapOptions">
+      <div id="header">
+        Maps
+      </div>
+      <div onclick="addTxDOT()" id="txdotMap" title="View the TxDOT Base Map">TxDOT</div>
+      <div onclick="addStreets()" id="streets" title="View ESRI Streets">ESRI Streets</div>
+      <div onclick="addImagery()" id="imagery" title="View Satellite Imagery">Imagery</div>
+      <div onclick="openGoogleMaps()" id="googleMaps" title="Open Google Maps">Google Maps</div>
+    </div>
+
+  
+
+</body>
+</html>
